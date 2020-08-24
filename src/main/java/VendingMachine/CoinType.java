@@ -1,3 +1,5 @@
+package VendingMachine;
+
 public enum CoinType {
 
     TWO_POUND("Two Pound", "£2", 200),

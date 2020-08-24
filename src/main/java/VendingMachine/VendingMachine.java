@@ -1,3 +1,5 @@
+package VendingMachine;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -5,18 +7,18 @@ import java.util.*;
 
 public class VendingMachine {
 
-    private Map<CoinType, Integer> coinBank;
-
     private static final Logger logger = LogManager.getLogger(VendingMachine.class);
+
+    private List<CoinBucket> coinBank;
 
     public VendingMachine(int[] initialCoins) {
         logger.info("INITIALISING.");
-        coinBank = new LinkedHashMap<>();
+        coinBank = new ArrayList<>();
 
         int coinIndex = 0;
         for (CoinType coinType : CoinType.values()) {
             int noOfCoins = initialCoins[coinIndex++];
-            coinBank.put(coinType, noOfCoins);
+            coinBank.add(new CoinBucket(coinType, noOfCoins));
         }
 
         logCoinBankState();
@@ -27,11 +29,11 @@ public class VendingMachine {
         logger.info("DEPOSITING.");
 
         int coinIndex = 0;
-        for (CoinType coinType : CoinType.values()) {
+        for (CoinBucket coinBucket : coinBank) {
             int noOfCoins = depositedCoins[coinIndex++];
             if (noOfCoins > 0) {
-                coinBank.computeIfPresent(coinType, (k, v) -> v + noOfCoins);
-                logger.info("Deposited {} x {} coins.", noOfCoins, coinType.getShortName());
+                coinBucket.depositCoins(noOfCoins);
+                logger.info("Deposited {} x {} coins.", noOfCoins, coinBucket.getCoinType().getShortName());
             }
         }
 
@@ -45,22 +47,17 @@ public class VendingMachine {
         int changeGiven = 0;
 
         int coinIndex = 0;
-        for (CoinType coinType : CoinType.values()) {
+        for (CoinBucket coinBucket : coinBank) {
             if (changeRequested == changeGiven) {
                 break;
             }
 
-            int idealNoOfCoinsNeeded = (changeRequested - changeGiven) / coinType.getValue();
-            int noOfCoinsInBank = coinBank.get(coinType);
-            int noOfCoinsToReturn = Math.min(idealNoOfCoinsNeeded, noOfCoinsInBank);
+            int idealNoOfCoinsNeeded = (changeRequested - changeGiven) / coinBucket.getCoinType().getValue();
+            int coinsWithdrawn = coinBucket.withdrawCoins(idealNoOfCoinsNeeded);
+            change[coinIndex++] = coinsWithdrawn;
+            changeGiven += coinsWithdrawn * coinBucket.getCoinType().getValue();
 
-            if (noOfCoinsToReturn > 0) {
-                coinBank.computeIfPresent(coinType, (k, v) -> v - noOfCoinsToReturn);
-                logger.info("Given {} x {} coins in change.", noOfCoinsToReturn, coinType.getShortName());
-                change[coinIndex] = noOfCoinsToReturn;
-                changeGiven += noOfCoinsToReturn * coinType.getValue();
-            }
-            coinIndex++;
+            logger.info("Given {} x {} coins in change.", coinsWithdrawn, coinBucket.getCoinType().getShortName());
         }
 
         if (changeGiven == changeRequested) {
@@ -77,11 +74,12 @@ public class VendingMachine {
         StringBuilder stringBuilder = new StringBuilder();
 
         boolean noCoins = true;
-        for (Map.Entry<CoinType, Integer> entry : coinBank.entrySet()) {
-            if (entry.getValue() != 0) {
+        for (CoinBucket coinBucket : coinBank) {
+            if (coinBucket.getCoinTotal() != 0) {
                 noCoins = false;
             }
-            stringBuilder.append(entry.getKey().getShortName()).append(": ").append(entry.getValue()).append(" | ");
+
+            stringBuilder.append(coinBucket.getCoinType().getShortName()).append(": ").append(coinBucket.getCoinTotal()).append(" | ");
         }
         stringBuilder.delete(stringBuilder.length() - 3, stringBuilder.length() - 1);
 
