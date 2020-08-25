@@ -15,58 +15,165 @@ import java.util.*;
 public class TestHarness {
 
     private static List<Item> items;
-    private static List<MachineConfig> machineConfigs;
+    private static List<TrackerConfig> trackerConfigs;
 
     private static Scanner in = new Scanner(System.in);
     private static DecimalFormat df = new DecimalFormat("0.00");
 
+    // Regex to use in input validation
     private static final String ONE_TWO_REGEX = "1|2";
-    private static final String ONE_THREE_REGEX = "1|2|3";
-    private static final String INTEGER_REGEX = "\\d+";
     private static final String INTEGER_REGEX_AND_MINUS_ONE = "\\d+|-1";
 
     public static void main(String[] args) {
 
+        // Load data from csv
         items = getItemsFromFile();
-        machineConfigs = getMachineConfigsFromFile();
+        trackerConfigs = getTrackerConfigsFromFile();
 
-        println("-- Welcome to the Vending Machine interactive test-harness --");
+        // Set up Coin Tracker
+        CoinTracker coinTracker = getCoinTracker();
+
+        // Buy item loop
+        boolean buyingItems = true;
+        while (buyingItems) {
+            buyItem(coinTracker);
+
+            println("");
+            println("-- Would you like to buy another item? --");
+            println("1. Yes");
+            println("2. No & exit");
+
+            if (getParsedIntegerInput(ONE_TWO_REGEX) != 1) {
+                buyingItems = false;
+            }
+        }
+    }
+
+    // Loads items from file
+    private static List<Item> getItemsFromFile() {
+        List<Item> items = new ArrayList<>();
+        try (
+                Reader reader = Files.newBufferedReader(new File("items.csv").toPath());
+                CSVReader csvReader = new CSVReader(reader);
+        ) {
+            String[] itemRecord;
+            while ((itemRecord = csvReader.readNext()) != null) {
+                Item item = new Item(itemRecord[0],
+                        Integer.parseInt(itemRecord[1]));
+                items.add(item);
+            }
+        } catch (IOException e) {
+            println("Error reading items.");
+            System.exit(0);
+        }
+        return items;
+    }
+
+    // Loads existing tracker configs from file
+    private static List<TrackerConfig> getTrackerConfigsFromFile() {
+        List<TrackerConfig> configs = new ArrayList<>();
+        try (
+                Reader reader = Files.newBufferedReader(new File("tracker_configs.csv").toPath());
+                CSVReader csvReader = new CSVReader(reader);
+        ) {
+            String[] configRecord;
+            while ((configRecord = csvReader.readNext()) != null) {
+                TrackerConfig trackerConfig = new TrackerConfig(
+                        configRecord[0],
+                        new int[]{
+                                Integer.parseInt(configRecord[1]),
+                                Integer.parseInt(configRecord[2]),
+                                Integer.parseInt(configRecord[3]),
+                                Integer.parseInt(configRecord[4]),
+                                Integer.parseInt(configRecord[5]),
+                                Integer.parseInt(configRecord[6]),
+                                Integer.parseInt(configRecord[7]),
+                                Integer.parseInt(configRecord[8])}
+                );
+                configs.add(trackerConfig);
+            }
+        } catch (IOException e) {
+            println("Error reading Coin Tracker configurations.");
+            System.exit(0);
+        }
+        return configs;
+    }
+
+    // Asks the user to choose from selecting an existing Coin Tracker or if they would like a random Coin Tracker
+    private static CoinTracker getCoinTracker() {
+        println("-- Welcome to the Coin Tracker interactive test-harness --");
         println("");
         println("-- Please select an option: --");
-        println("1. Load existing Vending Machine");
-        println("2. Random Vending Machine");
+        println("1. Load existing Coin Tracker configuration");
+        println("2. Random amounts of coins");
 
         int selection = getParsedIntegerInput(ONE_TWO_REGEX);
         clearConsole();
 
-        CoinTracker coinTracker;
         if (selection == 1) {
-            coinTracker = loadExistingVendingMachine();
+            return loadExistingCoinTracker();
         } else {
-            coinTracker = getRandomVendingMachine();
+            return getRandomCoinTracker();
+        }
+    }
+
+    // Displays configurations and the user selects their choice
+    private static CoinTracker loadExistingCoinTracker() {
+        println("-- Please select a Coin Tracker to load --");
+        println("");
+
+        String regex = "";
+        int trackerCount = 1;
+        for (TrackerConfig trackerConfig : trackerConfigs) {
+            print(trackerCount + ". " + trackerConfig.getName() + " ");
+            printCoins(trackerConfig.getConfig());
+            regex += trackerCount++ + "|";
         }
 
-        while (true) {
-            buyItem(coinTracker);
-        }
+        int[] config = trackerConfigs.get(getParsedIntegerInput(regex) - 1).getConfig();
+        return new CoinTracker(config);
+    }
 
+    // Returns a 'random' Coin Tracker
+    private static CoinTracker getRandomCoinTracker() {
+        Random random = new Random();
+        int[] coins = new int[]{
+                random.nextInt(20),
+                random.nextInt(20),
+                random.nextInt(20),
+                random.nextInt(20),
+                random.nextInt(20),
+                random.nextInt(20),
+                random.nextInt(20),
+                random.nextInt(20)
+        };
+        return new CoinTracker(coins);
     }
 
     private static void buyItem(CoinTracker coinTracker) {
         clearConsole();
+
+        // Display coins
         print("Coins in the machine: ");
         printCoins(coinTracker.getCoinBankState());
+
+        // Select item
         Item item = selectItem();
-        int[] coins = selectCoinsToPay(item.getPrice());
+
+        // Select which coins to pay with
+        int[] coins = selectCoinsToPayWith(item.getPrice());
         int coinSum = sumCoins(coins);
         int changeDue = coinSum - item.getPrice();
 
+        // Deposit coins to vending machine
         coinTracker.depositCoins(coins);
         println("Payed " + toPounds(coinSum));
         print("In these coins ");
         printCoins(coins);
-        println("For a " + item.getName() + " costing " + toPounds(item.getPrice()));
+        println("For " + item.getName() + " costing " + toPounds(item.getPrice()));
         println("");
+
+        // Calculate and get change
         int[] changeGiven = coinTracker.returnChange(changeDue);
         int changeGivenSum = sumCoins(changeGiven);
         println("Received " + toPounds(changeGivenSum) + " change");
@@ -75,34 +182,34 @@ public class TestHarness {
         if (changeGivenSum < changeDue) {
             println("The machine did not have the correct amount of change and short changed you.");
         }
+    }
 
+    private static Item selectItem() {
+        // Display options
         println("");
-        println("-- Would you like to buy another item? --");
-        println("1. Yes");
-        println("2. No & exit");
-
-        int selection = getParsedIntegerInput(ONE_TWO_REGEX);
-
-        if (selection == 2) {
-            System.exit(0);
+        println("-- Items --");
+        StringBuilder regex = new StringBuilder();
+        int itemCount = 1;
+        for (Item item : items) {
+            println(itemCount + ". " + item.getName() + " " + toPounds(item.getPrice()));
+            regex.append(itemCount++).append("|");
         }
+        println("");
+
+        // Take input
+        println("Which item would you like to purchase?");
+        Item item = items.get(getParsedIntegerInput(regex.toString()) - 1);
+        clearConsole();
+        return item;
     }
 
-    private static int sumCoins(int[] coins) {
-        int sum = 0;
-        for (CoinType coinType : CoinType.values()) {
-            sum += coins[coinType.getIndex()] * coinType.getValue();
-        }
-        return sum;
-    }
-
-    private static int[] selectCoinsToPay(int price) {
+    // Displays selected coins while asking the user to input how many of each coin they want to pay with.
+    private static int[] selectCoinsToPayWith(int price) {
         println("");
         println("-- Please select coins to pay with --");
 
         int[] coins = new int[8];
         int total = 0;
-
         for (CoinType coinType : CoinType.values()) {
             if (coinType.getIndex() != 0) {
                 clearConsole();
@@ -125,105 +232,31 @@ public class TestHarness {
             total += noOfCoins * coinType.getValue();
         }
 
+        // If the user doesn't select enough coins to pay for the item then ask again
         if (total < price) {
             clearConsole();
             println("-- You selected " + toPounds(total) + " but the item costs " + toPounds(price) + " --");
-            return selectCoinsToPay(price);
+            return selectCoinsToPayWith(price);
         }
         clearConsole();
         return coins;
     }
 
+    // Takes an int array of coins and sums their value
+    private static int sumCoins(int[] coins) {
+        int sum = 0;
+        for (CoinType coinType : CoinType.values()) {
+            sum += coins[coinType.getIndex()] * coinType.getValue();
+        }
+        return sum;
+    }
+
+    // Formats pence to pounds
     private static String toPounds(int pence) {
         return "£" + df.format((double) pence / 100);
     }
 
-    private static Item selectItem() {
-        println("");
-        println("-- Items --");
-        String regex = "";
-        int itemCount = 1;
-        for (Item item : items) {
-            println(itemCount + ". " + item.getName() + " " + toPounds(item.getPrice()));
-            regex += itemCount++ + "|";
-        }
-        // regex = regex.substring(0, regex.length() - 2);
-        println("");
-        println("Which item would you like to purchase?");
-        Item item = items.get(getParsedIntegerInput(regex) - 1);
-        clearConsole();
-        return item;
-    }
-
-
-    private static List<Item> getItemsFromFile() {
-        List<Item> items = new ArrayList<>();
-
-        try (
-                Reader reader = Files.newBufferedReader(new File("items.csv").toPath());
-                CSVReader csvReader = new CSVReader(reader);
-        ) {
-            String[] itemRecord;
-            while ((itemRecord = csvReader.readNext()) != null) {
-                Item item = new Item(itemRecord[0],
-                        Integer.parseInt(itemRecord[1]));
-                items.add(item);
-            }
-        } catch (IOException e) {
-            println("Error reading items.");
-            System.exit(0);
-        }
-
-        return items;
-    }
-
-    private static List<MachineConfig> getMachineConfigsFromFile() {
-        List<MachineConfig> configs = new ArrayList<>();
-
-        try (
-                Reader reader = Files.newBufferedReader(new File("machines.csv").toPath());
-                CSVReader csvReader = new CSVReader(reader);
-        ) {
-            String[] configRecord;
-            while ((configRecord = csvReader.readNext()) != null) {
-                MachineConfig machineConfig = new MachineConfig(
-                        configRecord[0],
-                        new int[]{
-                                Integer.parseInt(configRecord[1]),
-                                Integer.parseInt(configRecord[2]),
-                                Integer.parseInt(configRecord[3]),
-                                Integer.parseInt(configRecord[4]),
-                                Integer.parseInt(configRecord[5]),
-                                Integer.parseInt(configRecord[6]),
-                                Integer.parseInt(configRecord[7]),
-                                Integer.parseInt(configRecord[8])}
-                );
-                configs.add(machineConfig);
-            }
-        } catch (IOException e) {
-            println("Error reading machine configurations.");
-            System.exit(0);
-        }
-
-        return configs;
-    }
-
-    private static CoinTracker loadExistingVendingMachine() {
-        println("-- Please select a machine to load --");
-        println("");
-
-        String regex = "";
-        int machineCount = 1;
-        for (MachineConfig machineConfig : machineConfigs) {
-            print(machineCount + ". " + machineConfig.getName() + " ");
-            printCoins(machineConfig.getConfig());
-            regex += machineCount++ + "|";
-        }
-
-        int[] config = machineConfigs.get(getParsedIntegerInput(regex) - 1).getConfig();
-        return new CoinTracker(config);
-    }
-
+    // Formats and prints an int array of coins
     private static void printCoins(int[] coins) {
         println("|" + "£2: " + coins[0]
                 + "|" + "£1: " + coins[1]
@@ -234,22 +267,6 @@ public class TestHarness {
                 + "|" + "2p: " + coins[6]
                 + "|" + "1p: " + coins[7] + "|"
         );
-    }
-
-    private static CoinTracker getRandomVendingMachine() {
-        Random random = new Random();
-        int[] coins = new int[]{
-                random.nextInt(20),
-                random.nextInt(20),
-                random.nextInt(20),
-                random.nextInt(20),
-                random.nextInt(20),
-                random.nextInt(20),
-                random.nextInt(20),
-                random.nextInt(20)
-        };
-
-        return new CoinTracker(coins);
     }
 
     private static void println(String string) {
@@ -266,6 +283,7 @@ public class TestHarness {
         }
     }
 
+    // Validates and returns user input
     private static int getParsedIntegerInput(String regex) {
         while (true) {
             try {

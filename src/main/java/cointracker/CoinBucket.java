@@ -1,5 +1,8 @@
 package cointracker;
 
+/*
+    This class is responsible for holding the coins alongside their type in order to be used by CoinTracker.
+ */
 public class CoinBucket {
 
     private CoinType coinType;
@@ -22,6 +25,7 @@ public class CoinBucket {
         coinTotal += amount;
     }
 
+    // Takes a desired amount of coins and returns the closest possible amount.
     public int withdrawCoins(int desiredAmount) {
         if (desiredAmount <= coinTotal) {
             coinTotal -= desiredAmount;

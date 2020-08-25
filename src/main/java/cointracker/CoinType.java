@@ -1,5 +1,9 @@
 package cointracker;
 
+/*
+    This class holds the types of coins tracked by the system and their properties.
+    If the business were to expand overseas they could create a new CoinType to be used.
+ */
 public enum CoinType {
 
     TWO_POUND(0, "£2", 200),

@@ -1,11 +1,11 @@
 package testharness;
 
-public class MachineConfig {
+public class TrackerConfig {
 
     private String name;
     private int[] config;
 
-    public MachineConfig(String name, int[] config) {
+    public TrackerConfig(String name, int[] config) {
         this.name = name;
         this.config = config;
     }
