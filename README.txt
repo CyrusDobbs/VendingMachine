@@ -30,8 +30,9 @@ containing the new coin types can be produced and used within the system (with a
 choose the currency upon initialisation). Then, as long as the components connected to the CoinTracker were sending int
 arrays of the same configuration then the system should work as it does with GB coins.
 
-I have added a log system in order to track the inner workings of the component. (This is useful to view along
-side the test-harness).
+-- LOGGING --
+I have added log4j2 to allow for tracking the inner workings of the component. This is useful to view along
+side the test-harness and will appear once the application is run and a configuration is selected for the first time.
 
 -- TEST HARNESS -- 
 The test-harness simulates a human's selection of an item and of which coins to use to pay for the item. The coins are
@@ -42,5 +43,3 @@ The test-harness makes use of the items.csv & tracker_configs.csv. These can be 
 using specific values.
     items.csv - holds items for the user to buy (name,price)
     tracker_configs.csv - holds the initial coin configs of possible trackers (name,£2s,£1s,50ps,20ps,10ps,5ps,2ps,1ps)
-
-
