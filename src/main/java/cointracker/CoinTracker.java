@@ -1,23 +1,22 @@
-package VendingMachine;
+package cointracker;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
-public class VendingMachine {
+public class CoinTracker {
 
-    private static final Logger logger = LogManager.getLogger(VendingMachine.class);
+    private static final Logger logger = LogManager.getLogger(CoinTracker.class);
 
     private List<CoinBucket> coinBank;
 
-    public VendingMachine(int[] initialCoins) {
+    public CoinTracker(int[] initialCoins) {
         logger.info("INITIALISING.");
         coinBank = new ArrayList<>();
 
-        int coinIndex = 0;
         for (CoinType coinType : CoinType.values()) {
-            int noOfCoins = initialCoins[coinIndex++];
+            int noOfCoins = initialCoins[coinType.getIndex()];
             coinBank.add(new CoinBucket(coinType, noOfCoins));
         }
 
@@ -28,9 +27,8 @@ public class VendingMachine {
     public void depositCoins(int[] depositedCoins) {
         logger.info("DEPOSITING.");
 
-        int coinIndex = 0;
         for (CoinBucket coinBucket : coinBank) {
-            int noOfCoins = depositedCoins[coinIndex++];
+            int noOfCoins = depositedCoins[coinBucket.getCoinType().getIndex()];
             if (noOfCoins > 0) {
                 coinBucket.depositCoins(noOfCoins);
                 logger.info("Deposited {} x {} coins.", noOfCoins, coinBucket.getCoinType().getShortName());
@@ -46,18 +44,19 @@ public class VendingMachine {
         int[] change = new int[8];
         int changeGiven = 0;
 
-        int coinIndex = 0;
         for (CoinBucket coinBucket : coinBank) {
             if (changeRequested == changeGiven) {
                 break;
             }
 
             int idealNoOfCoinsNeeded = (changeRequested - changeGiven) / coinBucket.getCoinType().getValue();
-            int coinsWithdrawn = coinBucket.withdrawCoins(idealNoOfCoinsNeeded);
-            change[coinIndex++] = coinsWithdrawn;
-            changeGiven += coinsWithdrawn * coinBucket.getCoinType().getValue();
+            int noOfCoinsWithdrawn = coinBucket.withdrawCoins(idealNoOfCoinsNeeded);
+            change[coinBucket.getCoinType().getIndex()] = noOfCoinsWithdrawn;
+            changeGiven += noOfCoinsWithdrawn * coinBucket.getCoinType().getValue();
 
-            logger.info("Given {} x {} coins in change.", coinsWithdrawn, coinBucket.getCoinType().getShortName());
+            if (noOfCoinsWithdrawn > 0) {
+                logger.info("Given {} x {} coins in change.", noOfCoinsWithdrawn, coinBucket.getCoinType().getShortName());
+            }
         }
 
         if (changeGiven == changeRequested) {
@@ -68,6 +67,16 @@ public class VendingMachine {
         logCoinBankState();
         logger.info("FINISHED GIVING CHANGE.");
         return change;
+    }
+
+    public int[] getCoinBankState() {
+        int[] coins = new int[8];
+
+        for (CoinBucket coinBucket : coinBank) {
+            coins[coinBucket.getCoinType().getIndex()] = coinBucket.getCoinTotal();
+        }
+
+        return coins;
     }
 
     private void logCoinBankState() {
@@ -84,9 +93,9 @@ public class VendingMachine {
         stringBuilder.delete(stringBuilder.length() - 3, stringBuilder.length() - 1);
 
         if (noCoins) {
-            logger.info("CoinBank State: EMPTY!");
+            logger.info("CoinBankState: EMPTY!");
         } else {
-            logger.info("CoinBank State: " + stringBuilder.toString());
+            logger.info("CoinBankState: " + stringBuilder.toString());
         }
     }
 }

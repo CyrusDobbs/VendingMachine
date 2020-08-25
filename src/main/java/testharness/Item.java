@@ -1,4 +1,4 @@
-package TestHarness;
+package testharness;
 
 public class Item {
 

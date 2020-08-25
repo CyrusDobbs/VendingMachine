@@ -1,4 +1,4 @@
-package VendingMachine;
+package cointracker;
 
 public class CoinBucket {
 
