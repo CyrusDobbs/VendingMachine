@@ -4,7 +4,8 @@ You do not have to build the code because I have provided an up to date .jar fil
 This can be ran by navigating to the directory of the jar in the terminal and entering:
     java -jar VendingMachine.jar
 
-You can build the jar from the sourcecode yourself using gradle if necessary. I did this in intelliJ.
+You can build the jar from the sourcecode (VendingMachine-master.zip) yourself using gradle if necessary.
+I did this in intelliJ. The project is also on GitHub - https://github.com/CyrusDobbs/VendingMachine
 
 Running the jar executes the interactive test-harness.
 
